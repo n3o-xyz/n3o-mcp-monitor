@@ -324,17 +324,104 @@ class TraeMcpMonitor {
           
           switch (request.method) {
             case 'tools/list':
-              response = await this.server.request(
-                { method: 'tools/list', params: request.params || {} },
-                ListToolsRequestSchema
-              );
+              response = {
+                jsonrpc: '2.0',
+                id: request.id,
+                result: {
+                  tools: [
+                    {
+                      name: 'send_task_event',
+                      description: 'Envía un evento de tarea al monitor de Trae IDE',
+                      inputSchema: {
+                        type: 'object',
+                        properties: {
+                          event_type: {
+                            type: 'string',
+                            description: 'Tipo de evento (task_start, task_progress, task_complete, task_error)',
+                            enum: ['task_start', 'task_progress', 'task_complete', 'task_error']
+                          },
+                          task_id: {
+                            type: 'string',
+                            description: 'ID único de la tarea'
+                          },
+                          message: {
+                            type: 'string',
+                            description: 'Mensaje descriptivo del evento'
+                          },
+                          progress: {
+                            type: 'number',
+                            description: 'Progreso de la tarea (0-100)',
+                            minimum: 0,
+                            maximum: 100
+                          },
+                          metadata: {
+                            type: 'object',
+                            description: 'Metadatos adicionales del evento'
+                          }
+                        },
+                        required: ['event_type', 'task_id', 'message']
+                      }
+                    },
+                    {
+                      name: 'request_authorization',
+                      description: 'Solicita autorización del usuario para una acción específica',
+                      inputSchema: {
+                        type: 'object',
+                        properties: {
+                          action: {
+                            type: 'string',
+                            description: 'Acción que requiere autorización'
+                          },
+                          resource: {
+                            type: 'string',
+                            description: 'Recurso al que se quiere acceder'
+                          },
+                          reason: {
+                            type: 'string',
+                            description: 'Razón por la que se necesita la autorización'
+                          },
+                          timeout: {
+                            type: 'number',
+                            description: 'Tiempo límite en segundos para la respuesta',
+                            default: 30
+                          }
+                        },
+                        required: ['action', 'resource', 'reason']
+                      }
+                    }
+                  ]
+                }
+              };
               break;
               
             case 'tools/call':
-              response = await this.server.request(
-                { method: 'tools/call', params: request.params },
-                CallToolRequestSchema
-              );
+              const toolName = request.params?.name;
+              const toolArgs = request.params?.arguments || {};
+              
+              if (toolName === 'send_task_event') {
+                const result = await this.sendTaskEvent(toolArgs);
+                response = {
+                  jsonrpc: '2.0',
+                  id: request.id,
+                  result: { content: [{ type: 'text', text: result }] }
+                };
+              } else if (toolName === 'request_authorization') {
+                const result = await this.requestAuthorization(toolArgs);
+                response = {
+                  jsonrpc: '2.0',
+                  id: request.id,
+                  result: { content: [{ type: 'text', text: result }] }
+                };
+              } else {
+                response = {
+                  jsonrpc: '2.0',
+                  id: request.id,
+                  error: {
+                    code: -32601,
+                    message: `Tool not found: ${toolName}`
+                  }
+                };
+              }
               break;
               
             default:

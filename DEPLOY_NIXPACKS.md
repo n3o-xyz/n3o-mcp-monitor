@@ -23,6 +23,9 @@ PORT=3000
 - `GET /sse` - **Endpoint MCP Server-Sent Events**
 
 ### Configuración para Trae IDE
+
+El servidor ahora utiliza **Streamable HTTP Transport**, el protocolo MCP moderno que reemplaza a SSE para servidores remotos.
+
 ```json
 {
   "mcpServers": {
@@ -33,6 +36,36 @@ PORT=3000
   }
 }
 ```
+
+### Cambios Importantes
+
+- **Transporte**: Cambiado de SSE a Streamable HTTP
+- **Endpoint**: Ahora usa `/mcp` en lugar de `/sse`
+- **Protocolo**: Implementa JSON-RPC 2.0 sobre HTTP POST
+- **Compatibilidad**: Funciona mejor con servidores remotos y clientes modernos
+
+## Pasos para Redesplegar
+
+1. **Commit y push de los cambios**:
+   ```bash
+   git add .
+   git commit -m "Actualizar a Streamable HTTP Transport"
+   git push
+   ```
+
+2. **Redesplegar en Dokploy**:
+   - Ve a tu proyecto en Dokploy
+   - Haz clic en "Redeploy" o "Deploy"
+   - Espera a que termine el despliegue
+
+3. **Verificar el despliegue**:
+   ```bash
+   curl http://mcp-monitor-mcp-zawhow-f642d8-31-97-138-49.traefik.me/health
+   ```
+
+4. **Actualizar configuración de Trae IDE**:
+   - Usar la configuración HTTP mostrada arriba
+   - Reiniciar Trae IDE
 
 **Comando:** `pnpm start`
 
