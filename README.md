@@ -1,15 +1,17 @@
-# Trae MCP Monitor
+# Trae MCP Monitor - TypeScript
 
-Servidor MCP optimizado para Trae IDE Monitor - Diseñado para despliegue en línea.
+Servidor MCP (Model Context Protocol) desarrollado en TypeScript que permite monitorear y gestionar tareas a través de un sistema de eventos y autorizaciones.
 
 ## 🚀 Características
 
-- ✅ Protocolo MCP estándar
-- 🔄 Reconexión automática al WebSocket
-- 📊 Logs estructurados en JSON
-- 🐳 Optimizado para Docker/Dokploy
-- 🛡️ Manejo robusto de errores
-- 🔧 Configuración por variables de entorno
+- ✅ **TypeScript**: Código tipado con validación estricta
+- ✅ **Validación con Zod**: Esquemas de validación robustos
+- ✅ **Streamable HTTP Transport**: Compatible con el protocolo MCP
+- ✅ **WebSocket Monitor**: Conexión en tiempo real con el monitor
+- ✅ **Logging estructurado**: Sistema de logs con Winston
+- ✅ **Reconexión automática**: Manejo resiliente de conexiones
+- ✅ **Cierre graceful**: Manejo adecuado de señales del sistema
+- 🐳 **Optimizado para Docker/Dokploy**: Listo para despliegue
 
 ## 📦 Instalación
 
@@ -17,47 +19,164 @@ Servidor MCP optimizado para Trae IDE Monitor - Diseñado para despliegue en lí
 # Instalar dependencias
 pnpm install
 
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tu configuración
+# Compilar el proyecto
+pnpm run build
 
-# Ejecutar en desarrollo
-pnpm dev
-
-# Ejecutar en producción
+# Iniciar el servidor
 pnpm start
 ```
 
-## 🌐 Despliegue en Dokploy
+## 🛠️ Scripts disponibles
 
-### 1. Crear Aplicación en Dokploy
+- `pnpm run build` - Compila TypeScript a JavaScript
+- `pnpm start` - Inicia el servidor compilado
+- `pnpm run dev` - Modo desarrollo con recarga automática
+- `pnpm run dev:run` - Compila y ejecuta en modo desarrollo
+- `pnpm test` - Ejecuta las pruebas
 
-- **Tipo:** Application
-- **Source:** Git Repository
-- **Build Command:** `pnpm install`
-- **Start Command:** `pnpm start`
-- **Port:** 3000 (para health checks)
+## ⚙️ Configuración
 
-### 2. Variables de Entorno en Dokploy
+El servidor utiliza las siguientes variables de entorno:
 
-```env
-MCP_MONITOR_URL=ws://tu-backend:2200
-LOG_LEVEL=info
-NODE_ENV=production
-USER_ID=687a8418096ca32b8c045cf8
-SOURCE_NAME=trae-mcp-monitor
+| Variable | Descripción | Valor por Defecto | Requerido |
+|----------|-------------|-------------------|----------|
+| `MONITOR_URL` | URL del WebSocket del backend | `ws://localhost:2200` | ✅ |
+| `LOG_LEVEL` | Nivel de logging | `info` | ❌ |
+| `USER_ID` | ID del usuario por defecto | `687a8418096ca32b8c045cf8` | ❌ |
+| `SOURCE_NAME` | Nombre identificador del cliente | `trae-mcp-monitor` | ❌ |
+| `PORT` | Puerto del servidor HTTP | `3000` | ❌ |
+| `NODE_ENV` | Entorno de Node.js | `production` | ❌ |
+
+## 🔧 Herramientas MCP disponibles
+
+### 1. send_task_event
+Envía eventos de tareas al monitor.
+
+**Parámetros:**
+- `taskId` (string): ID único de la tarea
+- `event` (string): Tipo de evento (start, progress, complete, error)
+- `data` (object, opcional): Datos adicionales del evento
+
+**Ejemplo:**
+```json
+{
+  "taskId": "task-123",
+  "event": "complete",
+  "data": {
+    "result": "Tarea completada exitosamente",
+    "duration": 5000
+  }
+}
 ```
 
-### 3. Configuración de Red
+### 2. request_authorization
+Solicita autorización para ejecutar una acción.
 
-Si tu backend está en otro servicio de Dokploy:
-```env
-MCP_MONITOR_URL=ws://nombre-del-backend:2200
+**Parámetros:**
+- `action` (string): Acción que requiere autorización
+- `resource` (string): Recurso sobre el que se ejecuta la acción
+- `metadata` (object, opcional): Metadatos adicionales
+
+**Ejemplo:**
+```json
+{
+  "action": "delete_file",
+  "resource": "/path/to/important/file.txt",
+  "metadata": {
+    "reason": "Limpieza de archivos temporales"
+  }
+}
 ```
 
-Si tu backend tiene dominio público:
-```env
-MCP_MONITOR_URL=wss://api.tudominio.com:2200
+## 🌐 Endpoints HTTP
+
+### POST /mcp
+Endpoint principal para solicitudes MCP usando JSON-RPC 2.0.
+
+**Ejemplo de solicitud:**
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+  http://localhost:3000/mcp
+```
+
+**Respuesta:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "send_task_event",
+        "description": "Envía eventos de tareas al monitor",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "taskId": {"type": "string"},
+            "event": {"type": "string"},
+            "data": {"type": "object"}
+          },
+          "required": ["taskId", "event"]
+        }
+      }
+    ]
+  }
+}
+```
+
+### GET /health
+Endpoint de verificación de salud del servidor.
+
+**Respuesta:**
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "uptime": 3600,
+  "version": "1.0.0"
+}
+```
+
+### GET /
+Endpoint raíz con información básica del servidor.
+
+## 🔗 Configuración en Trae IDE
+
+Crea o actualiza el archivo `mcp.json` en tu proyecto:
+
+```json
+{
+  "servers": {
+    "trae-monitor": {
+      "type": "http",
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
+## 🎯 Configuración en Claude Desktop
+
+Edita el archivo de configuración de Claude Desktop:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "trae-monitor": {
+      "command": "node",
+      "args": ["/ruta/completa/al/proyecto/build/index.js"],
+      "env": {
+        "MONITOR_URL": "ws://localhost:2200",
+        "LOG_LEVEL": "info",
+        "USER_ID": "tu-user-id"
+      }
+    }
+  }
+}
 ```
 
 ## 🐳 Despliegue con Docker
@@ -69,125 +188,75 @@ docker build -t trae-mcp-monitor .
 # Ejecutar contenedor
 docker run -d \
   --name trae-mcp-monitor \
-  -e MCP_MONITOR_URL=ws://tu-backend:2200 \
+  -p 3000:3000 \
+  -e MONITOR_URL=ws://tu-backend:2200 \
   -e LOG_LEVEL=info \
   -e NODE_ENV=production \
   trae-mcp-monitor
 ```
 
-## ⚙️ Configuración del Cliente (Trae IDE)
+## 🌐 Despliegue en Dokploy
 
-### Opción 1: Configuración Local
+### 1. Crear Aplicación en Dokploy
 
-Si el servidor MCP está desplegado pero quieres usarlo localmente:
+- **Tipo:** Application
+- **Source:** Git Repository
+- **Build Command:** `pnpm install && pnpm run build`
+- **Start Command:** `pnpm start`
+- **Port:** 3000
 
-1. **Descargar el servidor:**
+### 2. Variables de Entorno en Dokploy
+
+```env
+MONITOR_URL=ws://tu-backend:2200
+LOG_LEVEL=info
+NODE_ENV=production
+USER_ID=687a8418096ca32b8c045cf8
+SOURCE_NAME=trae-mcp-monitor
+PORT=3000
+```
+
+## 🔍 Desarrollo
+
+### Estructura del proyecto
+
+```
+mcp-monitor/
+├── src/
+│   └── index.ts          # Código fuente principal
+├── build/                # Código compilado
+├── package.json          # Configuración del proyecto
+├── tsconfig.json         # Configuración de TypeScript
+├── .env.example          # Variables de entorno de ejemplo
+└── README.md            # Este archivo
+```
+
+### Debugging
+
+Para debuggear el servidor:
+
 ```bash
-# Clonar o descargar este directorio
-git clone [tu-repo] trae-mcp-monitor
-cd trae-mcp-monitor
-pnpm install
+# Compilar en modo desarrollo
+pnpm run dev
+
+# Ejecutar con logs detallados
+LOG_LEVEL=debug pnpm start
+
+# Probar con Inspector MCP
+npx @modelcontextprotocol/inspector build/index.js
 ```
 
-2. **Configurar variables de entorno:**
+### Testing
+
 ```bash
-# Crear .env
-echo "MCP_MONITOR_URL=wss://tu-servidor-desplegado.com:2200" > .env
+# Ejecutar pruebas
+pnpm test
+
+# Probar endpoint manualmente
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"send_task_event","arguments":{"taskId":"test-123","event":"start"}}}' \
+  http://localhost:3000/mcp
 ```
-
-3. **Configurar en Trae IDE:**
-
-En la configuración de MCP de Trae IDE (`~/.config/trae/mcp.json` o similar):
-
-```json
-{
-  "mcpServers": {
-    "trae-monitor": {
-      "command": "node",
-      "args": ["/ruta/completa/al/trae-mcp-monitor/server.js"],
-      "env": {
-        "MCP_MONITOR_URL": "wss://tu-servidor-desplegado.com:2200",
-        "LOG_LEVEL": "info",
-        "USER_ID": "tu-user-id"
-      }
-    }
-  }
-}
-```
-
-### Opción 2: Configuración con Ejecutable
-
-Si prefieres un ejecutable independiente:
-
-```json
-{
-  "mcpServers": {
-    "trae-monitor": {
-      "command": "npx",
-      "args": [
-        "--yes", 
-        "@trae/mcp-monitor@latest"
-      ],
-      "env": {
-        "MCP_MONITOR_URL": "wss://tu-servidor-desplegado.com:2200",
-        "LOG_LEVEL": "info"
-      }
-    }
-  }
-}
-```
-
-### Opción 3: Configuración con Docker
-
-Si quieres ejecutar el cliente también en Docker:
-
-```json
-{
-  "mcpServers": {
-    "trae-monitor": {
-      "command": "docker",
-      "args": [
-        "run", "--rm", "-i",
-        "-e", "MCP_MONITOR_URL=wss://tu-servidor-desplegado.com:2200",
-        "trae-mcp-monitor"
-      ]
-    }
-  }
-}
-```
-
-## 🔧 Variables de Entorno
-
-| Variable | Descripción | Valor por Defecto | Requerido |
-|----------|-------------|-------------------|----------|
-| `MCP_MONITOR_URL` | URL del WebSocket del backend | `ws://localhost:2200` | ✅ |
-| `LOG_LEVEL` | Nivel de logging | `info` | ❌ |
-| `USER_ID` | ID del usuario por defecto | `687a8418096ca32b8c045cf8` | ❌ |
-| `SOURCE_NAME` | Nombre identificador del cliente | `trae-mcp-monitor` | ❌ |
-| `NODE_ENV` | Entorno de Node.js | `production` | ❌ |
-
-## 🛠️ Herramientas MCP Disponibles
-
-### `send_task_event`
-Envía eventos de tareas al monitor.
-
-**Parámetros:**
-- `taskId` (string): ID único de la tarea
-- `type` (string): Tipo de evento (`task_completed`, `task_started`, `task_failed`)
-- `description` (string): Descripción del evento
-- `userId` (string): ID del usuario
-- `metadata` (object, opcional): Metadatos adicionales
-
-### `request_authorization`
-Solicita autorización para una acción.
-
-**Parámetros:**
-- `taskId` (string): ID de la tarea
-- `action` (string): Acción que requiere autorización
-- `description` (string): Descripción de la acción
-- `userId` (string): ID del usuario
-- `requiredBy` (string): Fecha límite (ISO string)
-- `metadata` (object, opcional): Metadatos adicionales
 
 ## 📊 Logs y Monitoreo
 
@@ -198,70 +267,49 @@ El servidor genera logs estructurados en JSON:
   "timestamp": "2024-01-15T10:30:00.000Z",
   "level": "info",
   "message": "Conectado al monitor MCP exitosamente",
-  "service": "trae-mcp-monitor"
+  "service": "trae-mcp-monitor",
+  "url": "ws://localhost:2200"
 }
 ```
 
-### Verificar Logs en Dokploy
-1. Ve a tu aplicación en Dokploy
-2. Sección "Logs"
-3. Busca mensajes como "Conectado al monitor MCP exitosamente"
+### Niveles de log disponibles:
+- `error`: Errores críticos
+- `warn`: Advertencias
+- `info`: Información general
+- `debug`: Información detallada para debugging
 
-## 🔍 Troubleshooting
+## 🔄 Migración desde JavaScript
 
-### Error: "Monitor no conectado"
-**Causa:** El WebSocket no puede conectarse al backend.
+Este proyecto es una migración completa del servidor original `server.js` a TypeScript, incluyendo:
 
-**Soluciones:**
-1. Verificar que `MCP_MONITOR_URL` sea correcta
-2. Confirmar que el backend esté corriendo
-3. Verificar que el puerto 2200 esté expuesto
-4. Revisar logs del backend para errores
+- ✅ Tipado estricto de todas las interfaces
+- ✅ Validación de esquemas con Zod
+- ✅ Mejor manejo de errores
+- ✅ Documentación de tipos
+- ✅ Configuración de build optimizada
+- ✅ Compatibilidad completa con el protocolo MCP
 
-### Error: "Herramienta desconocida"
-**Causa:** Se está llamando una herramienta que no existe.
+## 🤝 Contribuir
 
-**Solución:** Verificar que estés usando `send_task_event` o `request_authorization`.
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -am 'Agrega nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crea un Pull Request
 
-### Reconexiones constantes
-**Causa:** Problemas de red o backend inestable.
+## 📄 Licencia
 
-**Solución:** 
-1. Verificar estabilidad del backend
-2. Revisar configuración de red en Dokploy
-3. Aumentar recursos del contenedor si es necesario
+Este proyecto está bajo la licencia MIT.
 
-## 📝 Ejemplo de Uso
+## 🆘 Soporte
 
-Una vez configurado en Trae IDE, puedes usar las herramientas:
+Si encuentras algún problema:
 
-```javascript
-// Enviar evento de tarea completada
-await mcp.call('send_task_event', {
-  taskId: 'task-123',
-  type: 'task_completed',
-  description: 'Implementación de nueva funcionalidad completada',
-  userId: 'user-456',
-  metadata: {
-    duration: 1800,
-    linesOfCode: 150
-  }
-});
+1. Revisa los logs del servidor
+2. Verifica la configuración de variables de entorno
+3. Asegúrate de que el monitor WebSocket esté ejecutándose
+4. Consulta la documentación del protocolo MCP
 
-// Solicitar autorización para despliegue
-await mcp.call('request_authorization', {
-  taskId: 'deploy-789',
-  action: 'deploy_to_production',
-  description: 'Desplegar versión 2.1.0 a producción',
-  userId: 'user-456',
-  requiredBy: new Date(Date.now() + 3600000).toISOString() // 1 hora
-});
-```
+---
 
-## 🤝 Soporte
-
-Para problemas o preguntas:
-1. Revisar logs del servidor MCP
-2. Verificar logs del backend
-3. Confirmar configuración de red
-4. Contactar al equipo de Trae
+**¡Tu servidor MCP TypeScript está listo para usar!** 🎉
