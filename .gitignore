@@ -146,3 +146,5 @@ docker-compose.*.yml
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+conflocal.md

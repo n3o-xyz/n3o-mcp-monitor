@@ -1,41 +1,41 @@
 # Despliegue con Nixpacks - Trae MCP Monitor
 
-## Configuración para Dokploy
+## 🚀 Configuración en Dokploy
 
-### 1. Configuración del Proyecto
+### Tipo de Build
+- **Build Type**: `nixpacks`
+- **Puerto**: `3000`
+- **Protocolo**: HTTP (Dokploy maneja HTTPS automáticamente)
 
-**Tipo de Build:** Nixpacks
-
-**Configuración de Build:**
-- Nixpacks detectará automáticamente Node.js
-- Usará pnpm como package manager
-- No requiere configuración adicional
-
-### 2. Variables de Entorno
-
-```env
+### Variables de Entorno Requeridas
+```bash
 NODE_ENV=production
 LOG_LEVEL=info
-MCP_MONITOR_URL=ws://tu-monitor-url:2200
-USER_ID=687a8418096ca32b8c045cf8
+MCP_MONITOR_URL=ws://your-backend-domain:2200
+USER_ID=your-user-id
 SOURCE_NAME=trae-mcp-monitor
 PORT=3000
 ```
 
-### 3. Puerto
+### Endpoints Disponibles
+- `GET /` - Información del servicio
+- `GET /health` - Health check detallado
+- `GET /sse` - **Endpoint MCP Server-Sent Events**
 
-**Puerto:** 3000 (por defecto para aplicaciones Node.js)
-
-### 4. Health Check
-
-**Endpoints Disponibles:**
-- `GET /` - Health check principal
-- `GET /health` - Status detallado del servicio
-
-Ambos endpoints devuelven información sobre:
-- Estado del servicio
-- Conexión WebSocket al monitor
-- Timestamp y versión
+### Configuración para Trae IDE
+```json
+{
+  "mcpServers": {
+    "trae-monitor": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/client-sse",
+        "https://your-domain.com/sse"
+      ]
+    }
+  }
+}
+```
 
 **Comando:** `pnpm start`
 

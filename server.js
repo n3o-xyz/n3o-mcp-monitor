@@ -15,10 +15,12 @@
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import WebSocket from 'ws';
 import http from 'http';
+import express from 'express';
+import cors from 'cors';
 
 class TraeMcpMonitor {
   constructor() {
@@ -51,7 +53,6 @@ class TraeMcpMonitor {
     
     this.setupTools();
     this.connectToMonitor();
-    this.setupHttpServer();
     this.setupGracefulShutdown();
   }
 
@@ -278,37 +279,6 @@ class TraeMcpMonitor {
     setTimeout(() => this.connectToMonitor(), delay);
   }
 
-  setupHttpServer() {
-    const port = process.env.PORT || 3000;
-    
-    const server = http.createServer((req, res) => {
-      res.setHeader('Content-Type', 'application/json');
-      
-      if (req.url === '/health' || req.url === '/') {
-        const status = {
-          status: 'ok',
-          service: 'trae-mcp-monitor',
-          version: '1.0.0',
-          timestamp: new Date().toISOString(),
-          websocket: this.isWebSocketConnected() ? 'connected' : 'disconnected',
-          monitor_url: this.config.monitorUrl
-        };
-        
-        res.statusCode = 200;
-        res.end(JSON.stringify(status, null, 2));
-      } else {
-        res.statusCode = 404;
-        res.end(JSON.stringify({ error: 'Not found' }));
-      }
-    });
-    
-    server.listen(port, () => {
-      this.log('info', 'Servidor HTTP iniciado', { port });
-    });
-    
-    this.httpServer = server;
-  }
-
   setupGracefulShutdown() {
     const shutdown = (signal) => {
       this.log('info', 'Iniciando cierre graceful', { signal });
@@ -331,9 +301,42 @@ class TraeMcpMonitor {
 
   async start() {
     try {
-      const transport = new StdioServerTransport();
-      await this.server.connect(transport);
-      this.log('info', 'Servidor MCP iniciado exitosamente', { config: this.config });
+      const app = express();
+      app.use(cors());
+      app.use(express.json());
+      
+      // Endpoint para SSE MCP
+      app.get('/sse', async (req, res) => {
+        const transport = new SSEServerTransport('/sse', res);
+        await this.server.connect(transport);
+      });
+      
+      // Health check endpoint
+      app.get('/health', (req, res) => {
+        res.json({
+          status: 'ok',
+          service: 'trae-mcp-monitor',
+          version: '1.0.0',
+          timestamp: new Date().toISOString(),
+          websocket: this.isWebSocketConnected() ? 'connected' : 'disconnected',
+          monitor_url: this.config.monitorUrl
+        });
+      });
+      
+      app.get('/', (req, res) => {
+        res.json({
+          status: 'ok',
+          service: 'trae-mcp-monitor',
+          endpoints: ['/sse', '/health'],
+          version: '1.0.0'
+        });
+      });
+      
+      const port = process.env.PORT || 3000;
+      this.httpServer = app.listen(port, () => {
+        this.log('info', 'Servidor MCP HTTP/SSE iniciado', { port, config: this.config });
+      });
+      
     } catch (error) {
       this.log('error', 'Error al iniciar servidor MCP', { error: error.message });
       throw error;
