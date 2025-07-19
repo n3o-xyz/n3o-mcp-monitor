@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Servidor MCP para Trae IDE Monitor - Optimizado para Despliegue en Línea
+ * Servidor MCP para Trae IDE Monitor - Streamable HTTP Transport
  * 
- * Este servidor implementa el protocolo MCP estándar para conectarse con Trae IDE
- * y enviar eventos al monitor a través de WebSocket.
+ * Este servidor implementa el protocolo MCP moderno usando Streamable HTTP
+ * para conectarse con Trae IDE y enviar eventos al monitor a través de WebSocket.
  * 
  * Características:
- * - Reconexión automática
+ * - Streamable HTTP Transport (MCP 2025-03-26)
+ * - Reconexión automática WebSocket
  * - Manejo robusto de errores
  * - Logs estructurados
  * - Variables de entorno configurables
@@ -15,10 +16,8 @@
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import WebSocket from 'ws';
-import http from 'http';
 import express from 'express';
 import cors from 'cors';
 
@@ -302,13 +301,67 @@ class TraeMcpMonitor {
   async start() {
     try {
       const app = express();
-      app.use(cors());
-      app.use(express.json());
+      app.use(cors({
+        origin: '*',
+        methods: ['GET', 'POST', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Mcp-Session-Id'],
+        exposedHeaders: ['Mcp-Session-Id']
+      }));
+      app.use(express.json({ limit: '10mb' }));
       
-      // Endpoint para SSE MCP
-      app.use('/sse', async (req, res) => {
-        const transport = new SSEServerTransport('/sse', res);
-        await this.server.connect(transport);
+      // Streamable HTTP MCP endpoint
+      app.post('/mcp', async (req, res) => {
+        try {
+          const sessionId = req.headers['mcp-session-id'] || `session-${Date.now()}`;
+          
+          // Set session header
+          res.setHeader('Mcp-Session-Id', sessionId);
+          res.setHeader('Content-Type', 'application/json');
+          
+          // Handle MCP request
+          const request = req.body;
+          let response;
+          
+          switch (request.method) {
+            case 'tools/list':
+              response = await this.server.request(
+                { method: 'tools/list', params: request.params || {} },
+                ListToolsRequestSchema
+              );
+              break;
+              
+            case 'tools/call':
+              response = await this.server.request(
+                { method: 'tools/call', params: request.params },
+                CallToolRequestSchema
+              );
+              break;
+              
+            default:
+              response = {
+                jsonrpc: '2.0',
+                id: request.id,
+                error: {
+                  code: -32601,
+                  message: `Method not found: ${request.method}`
+                }
+              };
+          }
+          
+          res.json(response);
+          
+        } catch (error) {
+          this.log('error', 'Error procesando solicitud MCP', { error: error.message });
+          res.status(500).json({
+            jsonrpc: '2.0',
+            id: req.body?.id || null,
+            error: {
+              code: -32603,
+              message: 'Internal error',
+              data: error.message
+            }
+          });
+        }
       });
       
       // Health check endpoint
@@ -317,6 +370,7 @@ class TraeMcpMonitor {
           status: 'ok',
           service: 'trae-mcp-monitor',
           version: '1.0.0',
+          transport: 'streamable-http',
           timestamp: new Date().toISOString(),
           websocket: this.isWebSocketConnected() ? 'connected' : 'disconnected',
           monitor_url: this.config.monitorUrl
@@ -327,14 +381,15 @@ class TraeMcpMonitor {
         res.json({
           status: 'ok',
           service: 'trae-mcp-monitor',
-          endpoints: ['/sse', '/health'],
+          transport: 'streamable-http',
+          endpoints: ['/mcp', '/health'],
           version: '1.0.0'
         });
       });
       
       const port = process.env.PORT || 3000;
       this.httpServer = app.listen(port, () => {
-        this.log('info', 'Servidor MCP HTTP/SSE iniciado', { port, config: this.config });
+        this.log('info', 'Servidor MCP Streamable HTTP iniciado', { port, transport: 'streamable-http', config: this.config });
       });
       
     } catch (error) {

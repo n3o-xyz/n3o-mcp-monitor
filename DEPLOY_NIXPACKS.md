@@ -27,8 +27,8 @@ PORT=3000
 {
   "mcpServers": {
     "trae-monitor": {
-      "type": "sse",
-      "url": "https://your-domain.com/sse"
+      "type": "http",
+      "url": "https://tu-dominio.com/mcp"
     }
   }
 }
@@ -85,11 +85,8 @@ Para conectar desde Trae IDE, usar la configuración:
 {
   "mcpServers": {
     "trae-monitor": {
-      "command": "node",
-      "args": ["/path/to/server.js"],
-      "env": {
-        "MCP_MONITOR_URL": "ws://your-monitor-url:2200"
-      }
+      "type": "http",
+      "url": "http://mcp-monitor-mcp-zawhow-f642d8-31-97-138-49.traefik.me/mcp"
     }
   }
 }
