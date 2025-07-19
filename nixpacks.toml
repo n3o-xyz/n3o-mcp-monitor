@@ -17,6 +17,5 @@ cmd = "pnpm start"
 [staticAssets]
 # No static assets for MCP server
 
-[buildImage]
-# Use Node.js 18 for compatibility
-name = "node:18-alpine"
+# Build image configuration
+buildImage = "node:18-alpine"
