@@ -14,8 +14,5 @@ cmds = ["echo 'No build step required for MCP server'"]
 [start]
 cmd = "pnpm start"
 
-[staticAssets]
-# No static assets for MCP server
-
 # Build image configuration
 buildImage = "node:18-alpine"
