@@ -306,7 +306,7 @@ class TraeMcpMonitor {
       app.use(express.json());
       
       // Endpoint para SSE MCP
-      app.get('/sse', async (req, res) => {
+      app.use('/sse', async (req, res) => {
         const transport = new SSEServerTransport('/sse', res);
         await this.server.connect(transport);
       });

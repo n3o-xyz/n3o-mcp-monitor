@@ -27,11 +27,8 @@ PORT=3000
 {
   "mcpServers": {
     "trae-monitor": {
-      "command": "npx",
-      "args": [
-        "@modelcontextprotocol/client-sse",
-        "https://your-domain.com/sse"
-      ]
+      "type": "sse",
+      "url": "https://your-domain.com/sse"
     }
   }
 }
