@@ -1,0 +1,29 @@
+{
+  "name": "trae-mcp-monitor",
+  "version": "1.0.0",
+  "description": "Servidor MCP para Trae IDE Monitor - Optimizado para despliegue en línea",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "trae",
+    "ide",
+    "monitor",
+    "websocket",
+    "production"
+  ],
+  "author": "Trae Team",
+  "license": "MIT"
+}
