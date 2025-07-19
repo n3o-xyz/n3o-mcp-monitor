@@ -1,0 +1,22 @@
+[variables]
+NODE_ENV = "production"
+LOG_LEVEL = "info"
+MCP_MONITOR_URL = "ws://localhost:2200"
+USER_ID = "687a8418096ca32b8c045cf8"
+SOURCE_NAME = "trae-mcp-monitor"
+
+[phases.install]
+cmds = ["pnpm install --prod"]
+
+[phases.build]
+cmds = ["echo 'No build step required for MCP server'"]
+
+[start]
+cmd = "pnpm start"
+
+[staticAssets]
+# No static assets for MCP server
+
+[buildImage]
+# Use Node.js 18 for compatibility
+name = "node:18-alpine"
