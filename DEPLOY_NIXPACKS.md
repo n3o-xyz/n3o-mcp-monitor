@@ -19,6 +19,7 @@ LOG_LEVEL=info
 MCP_MONITOR_URL=ws://tu-monitor-url:2200
 USER_ID=687a8418096ca32b8c045cf8
 SOURCE_NAME=trae-mcp-monitor
+PORT=3000
 ```
 
 ### 3. Puerto
@@ -27,7 +28,15 @@ SOURCE_NAME=trae-mcp-monitor
 
 ### 4. Health Check
 
-**Endpoint:** No aplica (servidor MCP usa stdio)
+**Endpoints Disponibles:**
+- `GET /` - Health check principal
+- `GET /health` - Status detallado del servicio
+
+Ambos endpoints devuelven información sobre:
+- Estado del servicio
+- Conexión WebSocket al monitor
+- Timestamp y versión
+
 **Comando:** `pnpm start`
 
 ## Ventajas de Nixpacks

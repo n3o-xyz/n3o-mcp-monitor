@@ -18,6 +18,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import WebSocket from 'ws';
+import http from 'http';
 
 class TraeMcpMonitor {
   constructor() {
@@ -50,6 +51,7 @@ class TraeMcpMonitor {
     
     this.setupTools();
     this.connectToMonitor();
+    this.setupHttpServer();
     this.setupGracefulShutdown();
   }
 
@@ -276,6 +278,37 @@ class TraeMcpMonitor {
     setTimeout(() => this.connectToMonitor(), delay);
   }
 
+  setupHttpServer() {
+    const port = process.env.PORT || 3000;
+    
+    const server = http.createServer((req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      
+      if (req.url === '/health' || req.url === '/') {
+        const status = {
+          status: 'ok',
+          service: 'trae-mcp-monitor',
+          version: '1.0.0',
+          timestamp: new Date().toISOString(),
+          websocket: this.isWebSocketConnected() ? 'connected' : 'disconnected',
+          monitor_url: this.config.monitorUrl
+        };
+        
+        res.statusCode = 200;
+        res.end(JSON.stringify(status, null, 2));
+      } else {
+        res.statusCode = 404;
+        res.end(JSON.stringify({ error: 'Not found' }));
+      }
+    });
+    
+    server.listen(port, () => {
+      this.log('info', 'Servidor HTTP iniciado', { port });
+    });
+    
+    this.httpServer = server;
+  }
+
   setupGracefulShutdown() {
     const shutdown = (signal) => {
       this.log('info', 'Iniciando cierre graceful', { signal });
@@ -283,6 +316,10 @@ class TraeMcpMonitor {
       
       if (this.monitorWs) {
         this.monitorWs.close();
+      }
+      
+      if (this.httpServer) {
+        this.httpServer.close();
       }
       
       process.exit(0);

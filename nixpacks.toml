@@ -2,8 +2,9 @@
 NODE_ENV = "production"
 LOG_LEVEL = "info"
 MCP_MONITOR_URL = "ws://localhost:2200"
-USER_ID = "687a8418096ca32b8c045cf8"
+USER_ID = "default-user"
 SOURCE_NAME = "trae-mcp-monitor"
+PORT = "3000"
 
 [phases.install]
 cmds = ["pnpm install --prod"]
